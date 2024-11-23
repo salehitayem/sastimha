@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Email</title>
+  <style>
+    /* Apply the same dark theme design */
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background-color: #121212; /* Dark background */
+      color: #ffffff; /* Light text */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .login-container {
+      background-color: #1e1e1e; /* Slightly lighter dark */
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+      width: 300px;
+      text-align: center;
+    }
+
+    .login-form h1 {
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      color: #ffffff;
+    }
+
+    .input-group {
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    .input-group label {
+      font-size: 0.9rem;
+      color: #b0b0b0; /* Slightly dimmed text */
+    }
+
+    .input-group input {
+      width: 90%;
+      padding: 0.8rem;
+      margin-top: 0.3rem;
+      border-radius: 5px;
+      border: none;
+      background-color: #2c2c2c; /* Slightly lighter for input fields */
+      color: #ffffff;
+    }
+
+    .input-group input::placeholder {
+      color: #808080; /* Placeholder text color */
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border: 1px solid #0078d4; /* Highlight on focus */
+    }
+
+    .login-btn {
+      background-color: #0078d4; /* Button color */
+      color: #ffffff;
+      padding: 0.8rem 1rem;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .login-btn:hover {
+      background-color: #005bb5; /* Darker shade on hover */
+    }
+
+    .login-btn:focus {
+      outline: none;
+      box-shadow: 0 0 5px #0078d4;
+    }
+
+    input:-webkit-autofill {
+      box-shadow: 0 0 0px 1000px #2c2c2c inset !important;
+      -webkit-text-fill-color: #ffffff !important; /* Match text color */
+    }
+
+    input:-webkit-autofill:focus {
+      box-shadow: 0 0 0px 1000px #2c2c2c inset !important;
+    }
+
+    /* Optional: To fully disable autofill */
+    input[autocomplete="off"] {
+      border: 1px solid #0078d4; /* Add focus styling */
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li.error {
+      color: #ff4d4f; /* Red for errors */
+    }
+
+    li.success {
+      color: #4caf50; /* Green for success */
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <form class="login-form" action="/verify" method="post">
+      <h1>Verify Login</h1>
+      <div class="input-group">
+        <label for="code">Verification Code</label>
+        <input type="text" id="code" name="code" placeholder="Enter the code sent to your email" required>
+      </div>
+      <button type="submit" class="login-btn">Verify</button>
+    </form>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul>
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+  </div>
+</body>
+</html>

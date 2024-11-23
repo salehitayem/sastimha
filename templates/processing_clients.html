@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Clients</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    
+        h1 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+    
+        nav {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+    
+        nav a {
+            color: #0078d4;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+    
+        nav a.logout {
+            color: #e53935;
+        }
+    
+        nav a:hover {
+            text-decoration: underline;
+        }
+    
+        .client-card {
+            width: 100%;
+            max-width: 600px;
+            background-color: #1e1e1e;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+        }
+    
+        .client-header {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+    
+        .client-header span {
+            flex: 1 1 45%;
+            margin-bottom: 0.5rem;
+        }
+    
+        .client-body {
+            background-color: #2c2c2c;
+            padding: 1rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            word-wrap: break-word;
+        }
+    
+        .client-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+    
+        .client-footer .actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+    
+        .email {
+            display: flex;
+            justify-content:left;
+            align-items: center;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            
+        }
+        .email-text {
+            color: #0078d4; margin-left:5%;
+        }
+        .email span {
+            color: #ffffff;
+        }
+    
+        .notes-label {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+    
+        .notes-input {
+            margin: 2%;
+            width: 90%;
+            padding: 0.5rem;
+            border-radius: 5px;
+            border: none;
+            background-color: #2c2c2c;
+            color: #ffffff;
+        }
+    
+        .status-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #ffffff;
+            flex: 1 1 30%;
+        }
+    
+        .status-btn.waiting {
+            background-color: #ff9800;
+        }
+    
+        .status-btn.done {
+            background-color: #4caf50;
+        }
+    
+        .status-btn.delete {
+            background-color: #e53935;
+        }
+    
+        .status-btn:hover {
+            opacity: 0.9;
+        }
+    
+        @media (max-width: 768px) {
+            .client-card {
+                padding: 0.8rem;
+            }
+    
+            .client-header span {
+                flex: 1 1 100%;
+            }
+    
+            .client-footer .actions {
+                flex-direction: column;
+            }
+    
+            .status-btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+    
+            .email {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Sastimha</div>
+        <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+        <ul class="nav-links">
+            <li><a href="/waiting_clients">Waiting Clients</a></li>
+            <li><a href="/processing_clients">Processing Clients</a></li>
+            <li><a href="/done_clients">Done Clients</a></li>
+            <li><a href="/visitor_logs">Visitor Logs</a></li>
+        </ul>
+        <a href="/logoutx" class="logout">Logout</a>
+    </nav>
+    <h1>Processing Clients</h1>
+    <!-- Client Cards -->
+    {% for client in clients %}
+    <div class="client-card">
+        <div class="client-header">
+            <span>Date: {{ client['date'] }}</span>
+            <span>Subject: {{ client['subject'] }}</span>
+        </div>
+        <div class="client-body">
+            <p>{{ client['message'] }}</p>
+        </div>
+        <div class="client-footer">
+            <div class="email">
+                <span>Email:</span>
+                <a class="email-text" href="mailto:{{ client['email'] }}">{{ client['email'] }}</a>
+            </div>
+
+            <div class="actions">
+                <button class="status-btn waiting" onclick="changeStatus('{{ client['id'] }}', 'waiting')">Waiting</button>
+                <button class="status-btn done" onclick="changeStatus('{{ client['id'] }}', 'done')">Done</button>
+                <button class="status-btn delete" onclick="confirmDelete('{{ client['id'] }}')">Delete</button>
+            </div>
+
+            <div>
+                <label for="notes-{{ client['id'] }}" class="notes-label">Notes</label>
+                <textarea class="notes-input" id="notes-{{ client['id'] }}" placeholder="Add notes here...">{{ client['notes'] }}</textarea>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <script src="/static/scripts.js"></script>
+    <script>
+        function toggleMenu() {
+            const navLinks = document.querySelector('.nav-links');
+            navLinks.classList.toggle('active'); // Toggle the "active" class
+        }
+    </script>
+</body>
+</html>

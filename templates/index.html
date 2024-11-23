@@ -90,10 +90,10 @@
   <header id="header" class="header d-flex align-items-center fixed-top">
     <div class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
 
-      <a href="index.html" class="logo d-flex align-items-center me-auto me-xl-0">
+      <a href="index.html" style="pointer-events: none;" class="logo d-flex align-items-center me-auto me-xl-0">
         <!-- Uncomment the line below if you also wish to use an image logo -->
         <!-- <img src="static/assets/img/logo.png" alt=""> -->
-        <h1 class="sitename" disable>Sastimha</h1>
+        <h1 class="sitename" style="pointer-events: none;" disable>Sastimha</h1>
       </a>
 
       <nav id="navmenu" class="navmenu">
@@ -653,6 +653,7 @@
 
 </body>
 <script>
+  
   // Remove flash messages after 3 seconds
   setTimeout(() => {
     const flashMessages = document.querySelectorAll('.flash-message');
@@ -661,5 +662,6 @@
     });
   }, 5000);
 </script>
+
 
 </html>
