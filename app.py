@@ -1,5 +1,6 @@
-from flask import Flask, render_template, redirect, request, flash, g, jsonify, session, url_for
+from flask import Flask, render_template, redirect, request, flash, g, jsonify, session
 import secrets, sqlite3, random
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
 from config import Config
 from flask_mail import Mail, Message
@@ -38,12 +39,14 @@ def send_verification_email(email, code):
 
 
 def log_visitor():
+    """Logs the visitor's IP address, User-Agent, and Referer into the database."""
     try:
         db = get_db()
-        visitor_ip = request.remote_addr or "Unknown"
+        visitor_ip = request.remote_addr or "Unknown"  # Fallback for IP address
         user_agent = request.headers.get('User-Agent') or "Unknown"
         referer = request.headers.get('Referer') or "Direct Access"
 
+        # Insert the visitor details into the database
         db.execute(
             '''
             INSERT INTO visitor_logs (ip_address, user_agent, referer)
@@ -53,17 +56,8 @@ def log_visitor():
         )
         db.commit()
     except Exception as e:
-        print(f"Error logging visitor: {e}")
+        print(f"Error logging visitor: {e}")  # Log error to the console
         raise
-
-@app.route('/', methods=['GET'])
-def home():
-    try:
-        log_visitor()
-    except Exception as e:
-        print(f"Error in log_visitor: {e}")
-    return render_template('index.html')
-
 
 
 @app.route('/', methods=['POST', 'GET', 'UPDATE', 'DELETE'])
@@ -199,6 +193,8 @@ def contacta():
 @app.route('/loginx', methods=["POST", "GET"])
 def loginx():
     if request.method == "GET":
+        if session.get('admin_logged_in'):
+            return redirect('/admin_dashboard')
         return render_template('loginx.html')
 
     elif request.method == "POST":
@@ -211,6 +207,7 @@ def loginx():
         ).fetchone()
 
         if admin and check_password_hash(admin['password_hash'], password):
+            # Generate and store verification code in the database
             verification_code = str(random.randint(100000, 999999))
             db.execute(
                 'UPDATE admin_users SET verification_code = ? WHERE id = ?',
@@ -218,26 +215,30 @@ def loginx():
             )
             db.commit()
 
+            # Send verification email
             send_verification_email(admin['email'], verification_code)
 
+            # Temporarily store admin ID in session for verification
             session['pending_verification_user_id'] = admin['id']
             flash("A verification code has been sent to your email. Please verify to log in.", "info")
-            return redirect(url_for('verify'))
+            return redirect('/verify')
         else:
             flash("Invalid username or password!", "error")
-            return redirect(url_for('loginx'))
-
+            return redirect('/loginx')
+        
 
 
 @app.route('/verify', methods=["POST", "GET"])
 def verify():
     if request.method == "GET":
+        # Ensure there's a pending user to verify
         if not session.get('pending_verification_user_id'):
             flash("No pending verification. Please log in again.", "error")
-            return redirect(url_for('loginx'))
+            return redirect('/loginx')
         return render_template('verify.html')
 
     elif request.method == "POST":
+        # Get the verification code from the user
         code = request.form.get('code')
         user_id = session.get('pending_verification_user_id')
 
@@ -247,79 +248,90 @@ def verify():
         ).fetchone()
 
         if admin:
+            # Clear verification code and set user as logged in
             db.execute(
                 'UPDATE admin_users SET verification_code = NULL WHERE id = ?',
                 (user_id,)
             )
             db.commit()
 
-            session.pop('pending_verification_user_id', None)
+            session.pop('pending_verification_user_id', None)  # Clear pending user
             session['admin_logged_in'] = True
             session['admin_username'] = admin['username']
             flash("Login successful!", "success")
-            return redirect(url_for('waiting_clients'))
+            return redirect('/waiting_clients')
         else:
             flash("Invalid verification code!", "error")
-            return redirect(url_for('verify'))
+            return redirect('/verify')
+        
+
 
 
 @app.route('/logoutx', methods=["GET"])
 def logoutx():
+    # Clear session data
     session.clear()
     flash('You have been logged out.', 'success')
-    return redirect(url_for('loginx'))
+    return redirect('/loginx')
 
 
 
 @app.route('/waiting_clients', methods=["GET"])
 def waiting_clients():
+    """Render the Waiting Clients page."""
     if not session.get('admin_logged_in'):
         flash("You need to log in to access this page!", "error")
-        return redirect(url_for('loginx'))
+        return redirect('/loginx')
 
     db = get_db()
     clients = db.execute('SELECT * FROM clients WHERE status = ?', ('waiting',)).fetchall()
     return render_template('waiting_clients.html', clients=clients)
 
+
 @app.route('/processing_clients', methods=["GET"])
 def processing_clients():
+    """Render the Processing Clients page."""
     if not session.get('admin_logged_in'):
         flash("You need to log in to access this page!", "error")
-        return redirect(url_for('loginx'))
+        return redirect('/loginx')
 
     db = get_db()
     clients = db.execute('SELECT * FROM clients WHERE status = ?', ('processing',)).fetchall()
     return render_template('processing_clients.html', clients=clients)
 
+
 @app.route('/done_clients', methods=["GET"])
 def done_clients():
+    """Render the Done Clients page."""
     if not session.get('admin_logged_in'):
         flash("You need to log in to access this page!", "error")
-        return redirect(url_for('loginx'))
+        return redirect('/loginx')
 
     db = get_db()
     clients = db.execute('SELECT * FROM clients WHERE status = ?', ('done',)).fetchall()
     return render_template('done_clients.html', clients=clients)
 
+
 @app.route('/visitor_logs', methods=['GET'])
 def visitor_logs():
+    """Render the Visitor Logs page."""
     if not session.get('admin_logged_in'):
         flash("You need to log in to access this page!", "error")
-        return redirect(url_for('loginx'))
+        return redirect('/loginx')
 
     db = get_db()
     logs = db.execute(
         'SELECT id, ip_address, visit_time, user_agent, referer FROM visitor_logs ORDER BY visit_time DESC'
     ).fetchall()
-    total_logs = db.execute('SELECT COUNT(*) FROM visitor_logs').fetchone()[0]
+    total_logs = db.execute('SELECT COUNT(*) FROM visitor_logs').fetchone()[0]  # Get total logs count
 
     return render_template('visitor_logs.html', logs=logs, total_logs=total_logs)
 
 
 
-
 @app.route('/update_status', methods=["POST"])
 def update_status():
+    """Updates the status and notes of a client."""
     if not session.get('admin_logged_in'):
         return jsonify({"success": False, "message": "Unauthorized access"}), 403
 
@@ -328,51 +340,60 @@ def update_status():
     new_status = data.get('status')
     new_notes = data.get('notes')
 
+    # Validate the incoming data
     if not client_id or not new_status:
         return jsonify({"success": False, "message": "Invalid data"}), 400
 
     db = get_db()
+    # Verify the client exists
     client = db.execute('SELECT * FROM clients WHERE id = ?', (client_id,)).fetchone()
 
     if not client:
         return jsonify({"success": False, "message": "Client not found"}), 404
 
+    # Update the client's status and notes in the database
     try:
         db.execute('UPDATE clients SET status = ?, notes = ? WHERE id = ?', (new_status, new_notes, client_id))
         db.commit()
         return jsonify({"success": True, "message": "Status and notes updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Failed to update status: {str(e)}"}), 500
+        
+
 
 @app.route('/delete_client', methods=["POST"])
 def delete_client():
+    """Deletes a client from the database."""
     if not session.get('admin_logged_in'):
         return jsonify({"success": False, "message": "Unauthorized access"}), 403
 
     data = request.get_json()
     client_id = data.get('id')
 
+    # Validate the incoming data
     if not client_id:
         return jsonify({"success": False, "message": "Invalid client ID"}), 400
 
     db = get_db()
+    # Verify the client exists
     client = db.execute('SELECT * FROM clients WHERE id = ?', (client_id,)).fetchone()
 
     if not client:
         return jsonify({"success": False, "message": "Client not found"}), 404
 
+    # Delete the client from the database
     try:
         db.execute('DELETE FROM clients WHERE id = ?', (client_id,))
         db.commit()
         return jsonify({"success": True, "message": "Client deleted successfully"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Failed to delete client: {str(e)}"}), 500
+    
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return redirect('/')
-    
 
 
 
